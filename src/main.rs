@@ -10,6 +10,7 @@ use blog_os::println;
 use blog_os::task::{executor::Executor, keyboard, Task};
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
+use blog_os::drivers::ide::{IDEDisk, IDE_PRIMARY_CHANNEL_BUS};
 
 entry_point!(kernel_main);
 
@@ -26,6 +27,9 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+
+    let mut disk = unsafe {IDEDisk::new(IDE_PRIMARY_CHANNEL_BUS)};
+    unsafe { disk.init().unwrap() };
 
     #[cfg(test)]
     test_main();
