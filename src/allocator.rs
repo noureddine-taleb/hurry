@@ -1,5 +1,6 @@
 use alloc::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
+use core::{ptr::null_mut};
+use spin::Mutex;
 use fixed_size_block::FixedSizeBlockAllocator;
 use x86_64::{
     structures::paging::{
@@ -17,6 +18,39 @@ pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
 
 #[global_allocator]
 static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
+
+pub fn alloc_mapped_frame(
+    mapper: &mut impl Mapper<Size4KiB>,
+    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+) -> Result<(usize, usize), &'static str> {
+    lazy_static::lazy_static!(
+        static ref START: Mutex<VirtAddr> = Mutex::new(VirtAddr::new((HEAP_START + HEAP_SIZE) as u64));
+    );
+    let page = unsafe { Page::containing_address(*START.lock()) };
+
+    let frame = frame_allocator
+    .allocate_frame()
+    .ok_or("no free frame")?;
+    let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+    unsafe { mapper.map_to(page, frame, flags, frame_allocator).map_err(|_| "can't establish mappings")?.flush() };
+
+    unsafe { (*START.lock()) = *START.lock() + 0x1000 as usize };
+    Ok((page.start_address().as_u64() as usize, frame.start_address().as_u64() as usize))
+}
+
+pub fn alloc_mapped_frames(
+    mapper: &mut impl Mapper<Size4KiB>,
+    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
+    count: usize
+) -> Result<(usize, usize), &'static str> {
+
+    let (fphys, fvirt) = alloc_mapped_frame(mapper, frame_allocator)?;
+    for i in 0..count-1 {
+        let (phys, virt) = alloc_mapped_frame(mapper, frame_allocator)?;
+        assert!(phys >> 12 == fphys >> 12 + i + 1);
+    }
+    Ok((fphys, fvirt))
+}
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,

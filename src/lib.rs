@@ -17,6 +17,9 @@ pub mod serial;
 pub mod task;
 pub mod vga_buffer;
 pub mod drivers;
+pub static mut phys_offset: usize = 0;
+// pub static mut mapper: &mut impl Mapper<Size4KiB>;
+// pub static mut frame_allocator: &'static mut impl FrameAllocator<Size4KiB>;
 
 pub fn init() {
     gdt::init();
@@ -78,6 +81,7 @@ pub fn hlt_loop() -> ! {
 
 #[cfg(test)]
 use bootloader::{entry_point, BootInfo};
+use x86_64::structures::paging::{Mapper, Size4KiB, FrameAllocator};
 
 #[cfg(test)]
 entry_point!(test_kernel_main);

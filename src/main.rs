@@ -6,11 +6,13 @@
 
 extern crate alloc;
 
-use blog_os::println;
+use blog_os::drivers::e1000::E1000;
+use blog_os::{println, phys_offset};
 use blog_os::task::{executor::Executor, keyboard, Task};
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use blog_os::drivers::ide::{IDEDisk, IDE_PRIMARY_CHANNEL_BUS};
+use blog_os::drivers::pci::pci_init;
 
 entry_point!(kernel_main);
 
@@ -23,13 +25,14 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     blog_os::init();
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    unsafe {phys_offset = phys_mem_offset.as_u64() as usize};
     let mut mapper = unsafe { memory::init(phys_mem_offset) };
     let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
     let mut disk = unsafe {IDEDisk::new(IDE_PRIMARY_CHANNEL_BUS)};
-    unsafe { disk.init().unwrap() };
+    pci_init(&mut mapper, &mut frame_allocator);
 
     #[cfg(test)]
     test_main();
