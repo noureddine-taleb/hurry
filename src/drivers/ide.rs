@@ -108,8 +108,8 @@ unsafe fn any_as_u8_slice<T: Sized>(p: &mut T) -> &mut [u8] {
 }
 
 impl IDEDisk {
-    pub const unsafe fn new(port: u16) -> IDEDisk {
-        IDEDisk {
+    pub fn new(port: u16) -> Result<IDEDisk, String>  {
+        let mut ide = IDEDisk {
             raw_base_port: port,
             base_w_port: Port::new(port),
             features_errors_port: Port::new(port + 0x01),
@@ -130,7 +130,9 @@ impl IDEDisk {
             device: AtaIdentify::default(),
             model: String::new(),
             size: 0
-        }
+        };
+        unsafe { ide.init()?; };
+        Ok(ide)
     }
 
     // todo: add support for the slave drive
