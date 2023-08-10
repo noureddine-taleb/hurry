@@ -21,9 +21,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 
 [[package]]
+name = "bitflags"
+version = "2.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "630be753d4e58660abd17930c71b647fe46c27ea6b63cc59e1e3851406972e42"
+
+[[package]]
 name = "blog_os"
 version = "0.1.0"
 dependencies = [
+ "bitflags 2.3.3",
  "bootloader",
  "conquer-once",
  "crossbeam-queue",
@@ -198,7 +205,7 @@ version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "503a6c0e6d82daa87985e662d120c0176b09587c92a68db22781b28ae95405dd"
 dependencies = [
- "bitflags",
+ "bitflags 1.2.1",
  "x86_64",
 ]
 
@@ -221,6 +228,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb611915c917c6296d11e23f71ff1ecfe49c5766daba92cd3df52df6b58285b6"
 dependencies = [
  "bit_field",
- "bitflags",
+ "bitflags 1.2.1",
  "volatile 0.4.4",
 ]

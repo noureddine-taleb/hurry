@@ -35,7 +35,6 @@ const ATA_ST_DF: u8 = 0x20;
 const ATA_ST_DRQ: u8 = 0x08;
 const ATA_ST_ERR: u8 = 0x01;
 
-const SECTOR_SIZE: usize = 512;
 
 #[repr(C)]
 #[repr(packed)]
@@ -98,7 +97,8 @@ pub struct IDEDisk {
     lba2_port: Port<u8>,
     device: AtaIdentify,
     model: String,
-    size: u32,
+    size: usize,
+    slave: u8,
 }
 
 unsafe fn any_as_u8_slice<T: Sized>(p: &mut T) -> &mut [u8] {
@@ -109,6 +109,8 @@ unsafe fn any_as_u8_slice<T: Sized>(p: &mut T) -> &mut [u8] {
 }
 
 impl IDEDisk {
+    pub const SECTOR_SIZE: usize = 512;
+
     pub fn new(port: u16) -> Result<IDEDisk, String>  {
         let mut ide = IDEDisk {
             raw_base_port: port,
@@ -130,7 +132,8 @@ impl IDEDisk {
             control_altstatus_port: Port::new(port + 0x0C), // todo: this probably invalid in portability mode because max port is at off: 0x7
             device: AtaIdentify::default(),
             model: String::new(),
-            size: 0
+            size: 0,
+            slave: 0,
         };
         unsafe { ide.init()?; };
         Ok(ide)
@@ -155,7 +158,7 @@ impl IDEDisk {
     
         let buf = unsafe { any_as_u8_slice(&mut self.device) };
 
-        for i in 0..SECTOR_SIZE/2 {
+        for i in 0..Self::SECTOR_SIZE/2 {
             let word = self.base_w_port.read();
             buf[i * 2] = word as u8;
             buf[i * 2 + 1] = (word >> 8) as u8;
@@ -167,7 +170,7 @@ impl IDEDisk {
             disk_name[i] = disk_name[i].to_be();
         }
         self.model = String::from_raw_parts(disk_name.as_mut_ptr() as *mut u8, disk_name.len(), disk_name.len());
-        self.size = self.device.sectors_28;
+        self.size = self.device.sectors_28 as usize;
         // println!("sectors_48 = {:?}", device.sectors_48);
         // println!("sectors_28 = {}", device.sectors_28);
         
@@ -223,7 +226,7 @@ impl IDEDisk {
         self.control_altstatus_port.write(0x02);
     }
 
-    pub unsafe fn read_sector(&mut self, lba: u32, buf: &mut [u8]) -> Result<(), String> {
+    pub unsafe fn read_sector(&mut self, lba: usize, buf: &mut [u8]) -> Result<(), String> {
         if lba >= self.size {
             return Err("out of range lba ".to_owned() + lba.to_string().as_str());
         }
@@ -244,7 +247,7 @@ impl IDEDisk {
 
         self.ata_wait_data()?;
 
-        for i in 0..SECTOR_SIZE/2 {
+        for i in 0..Self::SECTOR_SIZE/2 {
             let word = self.base_w_port.read();
             buf[i * 2] = word as u8;
             buf[i * 2 + 1] = (word >> 8) as u8;
@@ -253,7 +256,7 @@ impl IDEDisk {
         Ok(())
     }
     
-    pub unsafe fn write_sector(&mut self, lba: u32, buf: &[u8]) -> Result<(), String> {
+    pub unsafe fn write_sector(&mut self, lba: usize, buf: &[u8]) -> Result<(), String> {
         if lba >= self.size {
             return Err("out of range lba ".to_owned() + lba.to_string().as_str());
         }
@@ -274,7 +277,7 @@ impl IDEDisk {
 
         self.ata_wait_data()?;
 
-        for i in 0..SECTOR_SIZE/2 {
+        for i in 0..Self::SECTOR_SIZE/2 {
             let word: u16 = ((buf[i * 2 + 1] as u16) << 8) | buf[i * 2] as u16;
             self.base_w_port.write(word);
         }
@@ -284,22 +287,22 @@ impl IDEDisk {
         Ok(())
     }
 
-    pub unsafe fn read_sectors(&mut self, lba: u32, count: u32) -> Result<Vec<u8>, String> {
-        let mut buf = vec![0_u8; SECTOR_SIZE * count as usize];
+    pub fn read_sectors(&mut self, lba: usize, count: usize) -> Result<Vec<u8>, String> {
+        let mut buf = vec![0_u8; Self::SECTOR_SIZE * count as usize];
         for sector in 0..count {
-            self.read_sector(lba + sector, &mut buf[SECTOR_SIZE*(sector as usize)..])?;
+            unsafe {self.read_sector(lba + sector, &mut buf[Self::SECTOR_SIZE*(sector as usize)..])?};
         }
         Ok(buf)
     }
     
-    pub unsafe fn write_sectors(&mut self, lba: u32, buf: &[u8], count: u32) -> Result<(), String> {
+    pub fn write_sectors(&mut self, lba: usize, buf: &[u8], count: usize) -> Result<(), String> {
         for sector in 0..count {
-            self.write_sector(lba + sector, &buf[SECTOR_SIZE*(sector as usize)..])?;
+            unsafe {self.write_sector(lba + sector, &buf[Self::SECTOR_SIZE*(sector as usize)..])?};
         }
         Ok(())
     }
 
-    pub unsafe fn write_sector_retry(&mut self, lba: u32, buf: &[u8]) -> Result<(), String> {
+    pub unsafe fn write_sector_retry(&mut self, lba: usize, buf: &[u8]) -> Result<(), String> {
         let mut read_buf: [u8; 512] = [0; 512];
         loop {
             self.write_sector(lba, buf)?;
