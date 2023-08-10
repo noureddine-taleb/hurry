@@ -1,5 +1,6 @@
-use alloc::{string::{String, ToString}, borrow::ToOwned};
+use alloc::{string::{String, ToString}, borrow::ToOwned, boxed::Box, vec};
 use x86_64::instructions::port::Port;
+use alloc::vec::Vec;
 use crate::println;
 
 /**
@@ -222,7 +223,7 @@ impl IDEDisk {
         self.control_altstatus_port.write(0x02);
     }
 
-    pub unsafe fn read_sector(&mut self, lba: u32, buf: &mut [u8; SECTOR_SIZE]) -> Result<(), String> {
+    pub unsafe fn read_sector(&mut self, lba: u32, buf: &mut [u8]) -> Result<(), String> {
         if lba >= self.size {
             return Err("out of range lba ".to_owned() + lba.to_string().as_str());
         }
@@ -252,7 +253,7 @@ impl IDEDisk {
         Ok(())
     }
     
-    pub unsafe fn write_sector(&mut self, lba: u32, buf: &[u8; SECTOR_SIZE]) -> Result<(), String> {
+    pub unsafe fn write_sector(&mut self, lba: u32, buf: &[u8]) -> Result<(), String> {
         if lba >= self.size {
             return Err("out of range lba ".to_owned() + lba.to_string().as_str());
         }
@@ -283,7 +284,22 @@ impl IDEDisk {
         Ok(())
     }
 
-    pub unsafe fn write_sector_retry(&mut self, lba: u32, buf: &[u8; SECTOR_SIZE]) -> Result<(), String> {
+    pub unsafe fn read_sectors(&mut self, lba: u32, count: u32) -> Result<Vec<u8>, String> {
+        let mut buf = vec![0_u8; SECTOR_SIZE * count as usize];
+        for sector in 0..count {
+            self.read_sector(lba + sector, &mut buf[SECTOR_SIZE*(sector as usize)..])?;
+        }
+        Ok(buf)
+    }
+    
+    pub unsafe fn write_sectors(&mut self, lba: u32, buf: &[u8], count: u32) -> Result<(), String> {
+        for sector in 0..count {
+            self.write_sector(lba + sector, &buf[SECTOR_SIZE*(sector as usize)..])?;
+        }
+        Ok(())
+    }
+
+    pub unsafe fn write_sector_retry(&mut self, lba: u32, buf: &[u8]) -> Result<(), String> {
         let mut read_buf: [u8; 512] = [0; 512];
         loop {
             self.write_sector(lba, buf)?;

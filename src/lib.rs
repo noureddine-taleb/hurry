@@ -17,6 +17,7 @@ pub mod serial;
 pub mod task;
 pub mod vga_buffer;
 pub mod drivers;
+pub mod ext2;
 pub static mut phys_offset: usize = 0;
 // pub static mut mapper: &mut impl Mapper<Size4KiB>;
 // pub static mut frame_allocator: &'static mut impl FrameAllocator<Size4KiB>;
