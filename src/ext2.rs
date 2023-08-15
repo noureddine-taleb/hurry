@@ -425,6 +425,28 @@ impl Inode {
         Err("dentry not found".to_owned())
     }
 
+    pub fn file_get_content(&self, disk: &mut IDEDisk) -> Result<Vec<u8>, String> {
+        let type_perm = self.ext2_inode.type_perm;
+        if type_perm.contains(TypePerm::FILE) == false {
+            return Err("inode is not a regular file".to_owned());
+        }
+
+        let mut content: Vec<u8> = vec![];
+        if self.size() == 0 {
+            return Ok(content);
+        }
+
+        let mut blki = 0_usize;
+        while blki * unsafe {ext2_block_size} < self.size() {
+            let blka = self.get_block_address(blki, disk)?;
+            let chunk = read_block(disk, blka)?;
+            let rem = self.size() - blki * unsafe {ext2_block_size};
+            content.append(&mut chunk[0..self.size().min(rem)].to_vec());
+            blki += 1;
+        }
+        Ok(content)
+    }
+
     fn block_to_dentries(&self, disk: &mut IDEDisk, block: u32) -> Result<Vec<DirectoryEntry>, String> {
         let raw_block = read_block(disk, block as usize)?;
         let mut v: Vec<DirectoryEntry> = vec![];

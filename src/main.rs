@@ -15,6 +15,7 @@ use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use blog_os::drivers::ide::{IDEDisk, IDE_PRIMARY_CHANNEL_BUS, IDE_SECONDARY_CHANNEL_BUS};
 use blog_os::drivers::pci::pci_init;
+use alloc::vec::Vec;
 
 entry_point!(kernel_main);
 
@@ -39,8 +40,9 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let mut rootfs = Ext2Fs::new(&mut disk).unwrap();
     
     println!("-------------------");
-    let inode = rootfs.path_to_inode(String::from("/file")).unwrap();
+    let inode = rootfs.path_to_inode(String::from("/dir/file51")).unwrap();
     println!("inode of /file: {:?}", inode);
+    println!("inode content: {:?}", inode.file_get_content(&mut disk).unwrap().iter().map(|c| *c as char).collect::<Vec<_>>());
 
     // let mut mbr: [u8; 512] = [0; 512];
 	// // read MBR
