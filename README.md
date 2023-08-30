@@ -1,6 +1,16 @@
 # Rust OS
 
-a basic os written in rust, and is compatible with linux in terms of ABI's.
+a basic os written in rust, and is intended to be compatible with linux in terms of ABI's.
+
+## Features
+
+* [X] booting
+* [X] disk driver
+* [X] ext2 fs
+* [X] nic driver
+* [ ] tcp/ip
+* [ ] riscv
+* [ ] smp
 
 ## Building
 
