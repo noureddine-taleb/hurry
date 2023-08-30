@@ -9,6 +9,8 @@ a basic os written in rust, and is intended to be compatible with linux in terms
 * [X] ext2 fs
 * [X] nic driver
 * [ ] tcp/ip
+* [ ] tasks/processes
+* [ ] ipc
 * [ ] riscv
 * [ ] smp
 
